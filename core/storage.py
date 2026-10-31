@@ -111,6 +111,15 @@ def _as_hash(value: bytes, name: str) -> bytes:
     return raw
 
 
+def _as_txid(value: bytes, name: str) -> bytes:
+    if not isinstance(value, (bytes, bytearray, memoryview)):
+        raise StorageError(f"{name} must be bytes")
+    raw = bytes(value)
+    if len(raw) != 32:
+        raise StorageError(f"{name} must be 32 bytes")
+    return raw
+
+
 def _row_to_block(row: sqlite3.Row) -> BlockRow:
     status = row["status"]
     if status not in STATUSES:
@@ -277,7 +286,7 @@ class Storage:
     # -- UTXO ---------------------------------------------------------------
 
     def put_utxo(self, utxo: UTXO) -> None:
-        txid = _as_hash(utxo.txid, "txid")
+        txid = _as_txid(utxo.txid, "txid")
         self._conn.execute(
             """
             INSERT OR REPLACE INTO utxo
@@ -297,13 +306,13 @@ class Storage:
     def delete_utxo(self, txid: bytes, vout: int) -> None:
         self._conn.execute(
             "DELETE FROM utxo WHERE txid = ? AND vout = ?",
-            (_as_hash(txid, "txid"), int(vout)),
+            (_as_txid(txid, "txid"), int(vout)),
         )
 
     def get_utxo(self, txid: bytes, vout: int) -> UTXO | None:
         row = self._conn.execute(
             "SELECT * FROM utxo WHERE txid = ? AND vout = ?",
-            (_as_hash(txid, "txid"), int(vout)),
+            (_as_txid(txid, "txid"), int(vout)),
         ).fetchone()
         return None if row is None else _row_to_utxo(row)
 

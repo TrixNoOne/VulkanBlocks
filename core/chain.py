@@ -858,7 +858,9 @@ class Chain:
         )
         if changes.coinbase_value > allowed + changes.fees:
             raise _InvalidBlock("coinbase exceeds subsidy + fees", row.hash)
-        emitted = parent_row.emitted + changes.coinbase_value
+        # L'emissione cumulata conta solo i sussidi realmente creati: le fee
+        # sono riciclate, non nuova massa monetaria.
+        emitted = parent_row.emitted + allowed
         if emitted > MAX_MONEY:
             raise _InvalidBlock("cumulative emission exceeds MAX_MONEY", row.hash)
 
