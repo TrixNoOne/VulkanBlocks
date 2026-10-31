@@ -1,0 +1,52 @@
+[
+  {
+    "inputs": [
+      {
+        "prev_txid": "0000000000000000000000000000000000000000000000000000000000000000",
+        "script_sig": "0101",
+        "sequence": 4294967295,
+        "vout": 4294967295
+      }
+    ],
+    "lock_time": 0,
+    "outputs": [
+      {
+        "script_pubkey": "417d4be90d35363267b8f2afafc9531111c41ae4",
+        "value": 314520000
+      }
+    ],
+    "serialized": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c031bf120000000014417d4be90d35363267b8f2afafc9531111c41ae400000000",
+    "txid": "2e33ca951ac99d9038d89f6abf377718c4264886c34ebb8640a987dc42e5d71e",
+    "version": 1
+  },
+  {
+    "inputs": [
+      {
+        "prev_txid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "script_sig": "",
+        "sequence": 4294967295,
+        "vout": 0
+      },
+      {
+        "prev_txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "script_sig": "01",
+        "sequence": 42,
+        "vout": 1
+      }
+    ],
+    "lock_time": 0,
+    "outputs": [
+      {
+        "script_pubkey": "51",
+        "value": 5000
+      },
+      {
+        "script_pubkey": "a3c6b1ee4a49d9f2af3b3802974744fba924164a",
+        "value": 3000
+      }
+    ],
+    "serialized": "0100000002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0000000000ffffffffbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb0100000001012a0000000288130000000000000151b80b00000000000014a3c6b1ee4a49d9f2af3b3802974744fba924164a00000000",
+    "txid": "b6d8ba325deb9b0ffea99354c42361067ffc01fa69fc86ae5220dd9225c4e8aa",
+    "version": 1
+  }
+]

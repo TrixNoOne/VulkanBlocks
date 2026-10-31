@@ -19,11 +19,17 @@ HALVING_INTERVAL = 1_051_200
 MAX_MONEY = 32_000_000_000 * UNITS_PER_VULCAN
 
 
-def block_subsidy(height: int, *, halving_interval: int = HALVING_INTERVAL) -> int:
+def block_subsidy(
+    height: int,
+    *,
+    halving_interval: int = HALVING_INTERVAL,
+    initial_subsidy: int = BLOCK_SUBSIDY,
+) -> int:
     """Sussidio per il blocco all'altezza *height*: dimezzamento per shift.
 
     Dopo 64 halving il sussidio e' 0 per sempre (shift >= 64 azzera un int64).
-    Funzione pura, solo interi.
+    Funzione pura, solo interi. ``initial_subsidy`` e' il sussidio dell'era 0
+    della rete in esame (per regtest puo' differire da BLOCK_SUBSIDY).
     """
     if not isinstance(height, int) or isinstance(height, bool) or height < 0:
         raise ValueError("height must be a non-negative int")
@@ -31,10 +37,14 @@ def block_subsidy(height: int, *, halving_interval: int = HALVING_INTERVAL) -> i
         raise ValueError("halving_interval must be an int")
     if halving_interval < 1:
         raise ValueError("halving_interval must be positive")
+    if not isinstance(initial_subsidy, int) or isinstance(initial_subsidy, bool):
+        raise ValueError("initial_subsidy must be an int")
+    if not 0 <= initial_subsidy <= MAX_MONEY:
+        raise ValueError("initial_subsidy out of range")
     era = height // halving_interval
     if era >= 64:
         return 0
-    return BLOCK_SUBSIDY >> era
+    return initial_subsidy >> era
 
 # Un output coinbase e' spendibile solo dopo questo numero di blocchi.
 COINBASE_MATURITY = 100

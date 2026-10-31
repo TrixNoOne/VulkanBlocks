@@ -854,7 +854,9 @@ class Chain:
 
         changes = self._validate_block_transactions(block)
         allowed = block_subsidy(
-            block.height, halving_interval=self.params.halving_interval
+            block.height,
+            halving_interval=self.params.halving_interval,
+            initial_subsidy=self.params.subsidy,
         )
         if changes.coinbase_value > allowed + changes.fees:
             raise _InvalidBlock("coinbase exceeds subsidy + fees", row.hash)
@@ -1078,7 +1080,9 @@ class Chain:
             raise ChainError("block script ops limit exceeded")
 
         coinbase_value = block_subsidy(
-            height, halving_interval=self.params.halving_interval
+            height,
+            halving_interval=self.params.halving_interval,
+            initial_subsidy=self.params.subsidy,
         ) + processed.fees
         if coinbase_value > MAX_MONEY:
             raise ChainError("coinbase value exceeds MAX_MONEY")

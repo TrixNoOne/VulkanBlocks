@@ -24,6 +24,7 @@ from core.params import (
 from core.script import (
     hash160,
     htlc_refund_script_sig,
+    htlc_script,
     p2pkh_script,
     p2pkh_script_sig,
     sign_digest,
@@ -73,6 +74,14 @@ def coinbase_tx(height: int, value: int, script_pubkey: bytes = b"\x51") -> Tran
     )
 
 
+def subsidy(params: ChainParams, height: int) -> int:
+    return block_subsidy(
+        height,
+        halving_interval=params.halving_interval,
+        initial_subsidy=params.subsidy,
+    )
+
+
 def mine_block(
     params: ChainParams,
     prev: Block,
@@ -86,9 +95,7 @@ def mine_block(
     nonce: int = 0,
 ) -> Block:
     if coinbase_value is None:
-        coinbase_value = block_subsidy(
-            height, halving_interval=params.halving_interval
-        )
+        coinbase_value = subsidy(params, height)
     cb = coinbase_tx(height, coinbase_value, coinbase_script)
     transactions = (cb,) + txs
     if target is None:
@@ -179,7 +186,7 @@ def test_block_reload_matches_hash():
     blk = mine_block(params, genesis, 1, now)
     assert accept(chain, blk, now=now).status == ChainStatus.ACCEPTED
     reloaded = chain.get_block(blk.block_hash)
-    assert reloaded is not None and reloaded.raw == blk.serialize()
+    assert reloaded is not None and reloaded.serialize() == blk.serialize()
     assert chain.get_block_by_height(1).block_hash == blk.block_hash
 
 
@@ -194,7 +201,7 @@ def test_double_spend_intra_block_rejected():
     genesis = params.genesis
     pk = key(1)
     spk = p2pkh_script(hash160(pub(pk)))
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
+    sub = subsidy(params, 1)
 
     now = time_at(1)
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub, coinbase_script=spk)
@@ -209,15 +216,7 @@ def test_double_spend_intra_block_rejected():
     now = time_at(3)
     spend1 = spend_tx(b1.transactions[0].txid(), 0, sub - 1000, spk, pk, height=3)
     spend2 = spend_tx(b1.transactions[0].txid(), 0, sub - 2000, spk, pk, height=3)
-    fee = 1000
-    b3 = mine_block(
-        params,
-        b2,
-        3,
-        now,
-        txs=(spend1, spend2),
-        coinbase_value=block_subsidy(3, halving_interval=params.halving_interval) + fee,
-    )
+    b3 = mine_block(params, b2, 3, now, txs=(spend1, spend2))
     res = accept(chain, b3, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
     # Stato immutato: la testa resta b2.
@@ -230,29 +229,30 @@ def test_double_spend_across_blocks_rejected():
     genesis = params.genesis
     pk = key(1)
     spk = p2pkh_script(hash160(pub(pk)))
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
+    sub = subsidy(params, 1)
 
     now = time_at(1)
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub, coinbase_script=spk)
     assert accept(chain, b1, now=now).status == ChainStatus.ACCEPTED
 
     now = time_at(2)
-    spend = spend_tx(b1.transactions[0].txid(), 0, sub - 1000, spk, pk, height=2)
-    b2 = mine_block(
-        params,
-        b1,
-        2,
-        now,
-        txs=(spend,),
-        coinbase_value=block_subsidy(2, halving_interval=params.halving_interval) + 1000,
-    )
+    b2 = mine_block(params, b1, 2, now)
     assert accept(chain, b2, now=now).status == ChainStatus.ACCEPTED
 
+    # h3: spendo il coinbase di b1 (maturo, 3-1 = 2).
     now = time_at(3)
-    b3 = mine_block(params, b2, 3, now)
+    spend = spend_tx(b1.transactions[0].txid(), 0, sub - 1000, spk, pk, height=3)
+    b3 = mine_block(
+        params,
+        b2,
+        3,
+        now,
+        txs=(spend,),
+        coinbase_value=subsidy(params, 3) + 1000,
+    )
     assert accept(chain, b3, now=now).status == ChainStatus.ACCEPTED
 
-    # h4: prova a spendere di nuovo lo stesso output di b1 (già speso in h2).
+    # h4: prova a spendere di nuovo lo stesso output di b1 (già speso in h3).
     now = time_at(4)
     spend_again = spend_tx(
         b1.transactions[0].txid(), 0, sub - 1000, spk, pk, height=4
@@ -263,7 +263,7 @@ def test_double_spend_across_blocks_rejected():
         4,
         now,
         txs=(spend_again,),
-        coinbase_value=block_subsidy(4, halving_interval=params.halving_interval) + 1000,
+        coinbase_value=subsidy(params, 4) + 1000,
     )
     res = accept(chain, b4, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
@@ -281,8 +281,8 @@ def test_coinbase_immature_spend_rejected_and_mature_accepted():
     genesis = params.genesis
     pk = key(2)
     spk = p2pkh_script(hash160(pub(pk)))
-    sub1 = block_subsidy(1, halving_interval=params.halving_interval)
-    sub3 = block_subsidy(3, halving_interval=params.halving_interval)
+    sub1 = subsidy(params, 1)
+    sub3 = subsidy(params, 3)
 
     # h1: coinbase spendibile a partire da h3 (maturità 2).
     now = time_at(1)
@@ -294,23 +294,23 @@ def test_coinbase_immature_spend_rejected_and_mature_accepted():
     b2 = mine_block(params, b1, 2, now)
     assert accept(chain, b2, now=now).status == ChainStatus.ACCEPTED
 
-    # h3: spendo il coinbase di b1 (3 - 1 = 2, maturo) e metto un coinbase
+    # h3: spendo il coinbase di b1 (maturo, 3 - 1 = 2); il coinbase di b3 e'
     # spendibile a partire da h5.
     now = time_at(3)
-    spend = spend_tx(b1.transactions[0].txid(), 0, sub1 - 1000, spk, pk, height=3)
+    spend_b1 = spend_tx(b1.transactions[0].txid(), 0, sub1 - 1000, spk, pk, height=3)
     b3 = mine_block(
         params,
         b2,
         3,
         now,
-        txs=(spend,),
+        txs=(spend_b1,),
         coinbase_value=sub3,
         coinbase_script=spk,
     )
     res = accept(chain, b3, now=now)
     assert res.status == ChainStatus.ACCEPTED, res.reason
 
-    # h4: il coinbase di b3 ha maturità 4-3 = 1 < 2 -> immaturo, rifiutato.
+    # h4: il coinbase di b3 ha maturità 4 - 3 = 1 < 2 -> immaturo, rifiutato.
     now = time_at(4)
     spend_immature = spend_tx(
         b3.transactions[0].txid(), 0, sub3 - 1000, spk, pk, height=4
@@ -321,23 +321,29 @@ def test_coinbase_immature_spend_rejected_and_mature_accepted():
         4,
         now,
         txs=(spend_immature,),
-        coinbase_value=block_subsidy(4, halving_interval=params.halving_interval) + 1000,
+        coinbase_value=subsidy(params, 4) + 1000,
     )
     res = accept(chain, b_imm, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
     assert "immature coinbase" in res.reason
-    # Stato immutato: la testa resta b3.
+    # Stato immutato: la testa resta b3 (altezza 3).
     assert chain.tip().block_hash == b3.block_hash
 
-    # h5: stessa spesa è matura (5 - 3 = 2).
+    # h5: blocco vuoto che avanza l'altezza a 4.
     now = time_at(5)
+    b4 = mine_block(params, b3, 4, now)
+    res = accept(chain, b4, now=now)
+    assert res.status == ChainStatus.ACCEPTED, res.reason
+
+    # h6 (altezza 5): stessa spesa di b3 è matura (5 - 3 = 2).
+    now = time_at(6)
     b5 = mine_block(
         params,
-        b3,
+        b4,
         5,
         now,
         txs=(spend_immature,),
-        coinbase_value=block_subsidy(5, halving_interval=params.halving_interval) + 1000,
+        coinbase_value=subsidy(params, 5) + 1000,
     )
     res = accept(chain, b5, now=now)
     assert res.status == ChainStatus.ACCEPTED, res.reason
@@ -353,8 +359,8 @@ def test_coinbase_exceeds_subsidy_plus_fee_rejected():
     chain = Chain(params)
     genesis = params.genesis
     now = time_at(1)
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
-    # Il miner chiede un'unità di più del sussidio, senza fee.
+    sub = subsidy(params, 1)
+    # Il miner chiede un'unita' di piu' del sussidio, senza fee.
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub + 1)
     res = accept(chain, b1, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
@@ -377,7 +383,7 @@ def test_cumulative_emission_exceeds_max_money_rejected():
 
     b1 = mine_block(params, genesis, 1, now, coinbase_value=MAX_MONEY)
     res = accept(chain, b1, now=now)
-    assert res.status == ChainStatus.ACCEPTED
+    assert res.status == ChainStatus.ACCEPTED, res.reason
     assert chain.storage.active_tip().emitted == MAX_MONEY
 
     now = time_at(2)
@@ -460,7 +466,7 @@ def test_wrong_coinbase_height_rejected():
     bad_cb = Transaction(
         1,
         (TxIn(NULL_TXID, COINBASE_INDEX, encode_coinbase_height(9)),),
-        (TxOut(block_subsidy(1, halving_interval=params.halving_interval), b"\x51"),),
+        (TxOut(subsidy(params, 1), b"\x51"),),
     )
     header = BlockHeader(
         version=1,
@@ -489,7 +495,7 @@ def test_invalid_script_rejected():
     genesis = params.genesis
     pk = key(3)
     spk = p2pkh_script(hash160(pub(pk)))
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
+    sub = subsidy(params, 1)
 
     now = time_at(1)
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub, coinbase_script=spk)
@@ -511,7 +517,7 @@ def test_invalid_script_rejected():
         3,
         now,
         txs=(spend_bad_sig,),
-        coinbase_value=block_subsidy(3, halving_interval=params.halving_interval) + 1000,
+        coinbase_value=subsidy(params, 3) + 1000,
     )
     res = accept(chain, b3, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
@@ -525,10 +531,8 @@ def test_cltv_not_mature_rejected_then_mature():
     receiver = key(5)
     preimage = bytes(range(32))
     payment_hash = hashlib.sha256(preimage).digest()
-    from core.script import htlc_script
-
     htlc = htlc_script(payment_hash, pub(receiver), pub(sender), 5)
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
+    sub = subsidy(params, 1)
 
     now = time_at(1)
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub, coinbase_script=htlc)
@@ -538,17 +542,21 @@ def test_cltv_not_mature_rejected_then_mature():
     b2 = mine_block(params, b1, 2, now)
     assert accept(chain, b2, now=now).status == ChainStatus.ACCEPTED
 
-    # h3: lock_time 3, timelock HTLC 5 -> CHECKLOCKTIMEVERIFY fallisce
-    # ("transaction lock_time below CLTV").
     now = time_at(3)
+    b3 = mine_block(params, b2, 3, now)
+    assert accept(chain, b3, now=now).status == ChainStatus.ACCEPTED
+
+    # h4: tentativo di refund con lock_time 4 e timelock HTLC 5 ->
+    # CHECKLOCKTIMEVERIFY fallisce ("transaction lock_time below CLTV").
+    now = time_at(4)
     unsigned_refund = Transaction(
         1,
         (TxIn(b1.transactions[0].txid(), 0, b"", 199),),
         (TxOut(sub - 1000, b"\x51"),),
-        3,
+        4,
     )
     digest = sighash(unsigned_refund, 0, htlc, network=NETWORK_TEST)
-    refund_tx = Transaction(
+    refund_imm = Transaction(
         1,
         (
             TxIn(
@@ -559,22 +567,30 @@ def test_cltv_not_mature_rejected_then_mature():
             ),
         ),
         (TxOut(sub - 1000, b"\x51"),),
-        3,
+        4,
     )
-    b3 = mine_block(
+    b4_imm = mine_block(
         params,
-        b2,
-        3,
+        b3,
+        4,
         now,
-        txs=(refund_tx,),
-        coinbase_value=block_subsidy(3, halving_interval=params.halving_interval) + 1000,
+        txs=(refund_imm,),
+        coinbase_value=subsidy(params, 4) + 1000,
     )
-    res = accept(chain, b3, now=now)
+    res = accept(chain, b4_imm, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
     assert "CLTV" in res.reason or "lock_time" in res.reason
+    # Stato immutato: testa ancora b3.
+    assert chain.tip().block_hash == b3.block_hash
 
-    # h5: stessa spesa è matura (height 5 >= timelock 5).
+    # h5: blocco vuoto che avanza l'altezza a 4 (la testa e' ancora b3).
     now = time_at(5)
+    b4 = mine_block(params, b3, 4, now)
+    res = accept(chain, b4, now=now)
+    assert res.status == ChainStatus.ACCEPTED, res.reason
+
+    # h6 (altezza 5): stesso refund maturo (height 5 >= timelock 5 e lock_time 5).
+    now = time_at(6)
     unsigned_refund = Transaction(
         1,
         (TxIn(b1.transactions[0].txid(), 0, b"", 199),),
@@ -582,7 +598,7 @@ def test_cltv_not_mature_rejected_then_mature():
         5,
     )
     digest = sighash(unsigned_refund, 0, htlc, network=NETWORK_TEST)
-    refund_tx = Transaction(
+    refund_mat = Transaction(
         1,
         (
             TxIn(
@@ -597,11 +613,11 @@ def test_cltv_not_mature_rejected_then_mature():
     )
     b5 = mine_block(
         params,
-        b2,
+        b4,
         5,
         now,
-        txs=(refund_tx,),
-        coinbase_value=block_subsidy(5, halving_interval=params.halving_interval) + 1000,
+        txs=(refund_mat,),
+        coinbase_value=subsidy(params, 5) + 1000,
     )
     res = accept(chain, b5, now=now)
     assert res.status == ChainStatus.ACCEPTED, res.reason
@@ -613,7 +629,7 @@ def test_locktime_beyond_threshold_rejected():
     genesis = params.genesis
     pk = key(6)
     spk = p2pkh_script(hash160(pub(pk)))
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
+    sub = subsidy(params, 1)
 
     now = time_at(1)
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub, coinbase_script=spk)
@@ -635,7 +651,7 @@ def test_locktime_beyond_threshold_rejected():
         3,
         now,
         txs=(bad,),
-        coinbase_value=block_subsidy(3, halving_interval=params.halving_interval) + 1000,
+        coinbase_value=subsidy(params, 3) + 1000,
     )
     res = accept(chain, b3, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
@@ -652,7 +668,7 @@ def test_check_tx_inputs_reusable_view():
     genesis = params.genesis
     pk = key(7)
     spk = p2pkh_script(hash160(pub(pk)))
-    sub = block_subsidy(1, halving_interval=params.halving_interval)
+    sub = subsidy(params, 1)
 
     now = time_at(1)
     b1 = mine_block(params, genesis, 1, now, coinbase_value=sub, coinbase_script=spk)
@@ -701,9 +717,7 @@ def test_build_template_produces_minable_block():
     assert time_at(2) <= tmpl.header.timestamp <= now + 7_200
     coinbase = tmpl.transactions[0]
     assert coinbase.is_coinbase
-    assert coinbase.outputs[0].value == block_subsidy(
-        2, halving_interval=params.halving_interval
-    )
+    assert coinbase.outputs[0].value == subsidy(params, 2)
     tmpl.header.check_pow()
 
 
@@ -737,21 +751,24 @@ def test_reorg_to_heavier_branch_state_matches_independent_application():
     assert baseline.utxo_set_hash() == hash_a5
     baseline.close()
 
-    # Ramo B dal blocco all'altezza 2: B3..B6 (4 blocchi) -> B più pesante di A
-    # (lavoro uguale per blocco, B ha un blocco in più: genesis+6 vs genesis+5).
+    # Ramo B dal blocco all'altezza 2: B3..B6 (4 blocchi) -> B piu' pesante di A
+    # (lavoro uguale per blocco, B ha un blocco in piu': genesis+6 vs genesis+5).
     fork2 = blocks_a[1]  # altezza 2
     prev = fork2
     blocks_b = []
     for h in range(3, 7):
         now = time_at(h)
-        blk = mine_block(params, prev, h, now)
+        # Coinbase diverso da quello del ramo A, altrimenti B3 == A3 (duplicato).
+        blk = mine_block(params, prev, h, now, coinbase_script=b"\x52")
         blocks_b.append(blk)
         prev = blk
 
-    # Accettare B3 scatena il reorg: B diventa la catena attiva.
-    now = time_at(3)
-    res = accept(chain, blocks_b[0], now=now)
-    assert res.status == ChainStatus.ACCEPTED, res.reason
+    # Accettare l'intero ramo B: i primi blocchi sono rami laterali validi
+    # (non ancora piu' pesanti), l'ultimo scatena il reorg.
+    for blk in blocks_b:
+        now = time_at(blk.height)
+        res = accept(chain, blk, now=now)
+        assert res.status == ChainStatus.ACCEPTED, res.reason
     assert chain.tip().height == 6
     assert chain.tip().block_hash == blocks_b[-1].block_hash
 
@@ -765,7 +782,7 @@ def test_reorg_to_heavier_branch_state_matches_independent_application():
     assert chain.utxo_set_hash() == baseline_b.utxo_set_hash()
     baseline_b.close()
 
-    # Ritorno a A: estendo A con A6,A7 (2 blocchi) -> A diventa più pesante
+    # Ritorno a A: estendo A con A6,A7 (2 blocchi) -> A diventa piu' pesante
     # (genesis+7 > genesis+6).
     prev = blocks_a[-1]  # altezza 5, ora ramo valido laterale
     blocks_a_ext = []
@@ -776,7 +793,7 @@ def test_reorg_to_heavier_branch_state_matches_independent_application():
         prev = blk
     now = time_at(6)
     res = accept(chain, blocks_a_ext[0], now=now)
-    # Lavoro pari (genesis+6 == genesis+6): parità mantiene il ramo attivo (B).
+    # Lavoro pari (genesis+6 == genesis+6): parita' mantiene il ramo attivo (B).
     assert res.status == ChainStatus.ACCEPTED
     assert chain.tip().block_hash == blocks_b[-1].block_hash
     now = time_at(7)
@@ -808,33 +825,35 @@ def test_reorg_invalid_block_rollback_and_descendants_invalid():
     b2 = mine_block(params, b1, 2, now)
     assert accept(chain, b2, now=now).status == ChainStatus.ACCEPTED
 
-    # Ramo laterale da b1: c2 (valido), c3 (coinbase oltre subsidy -> invalido), c4.
-    now = time_at(3)
-    c2 = mine_block(params, b1, 3, now)
-    assert accept(chain, c2, now=now).status == ChainStatus.ACCEPTED  # pari lavoro
-    # La testa resta b2 (parità mantiene il ramo attivo).
+    # Ramo laterale da b1: c2 (altezza 2, valido), c3 (altezza 3, coinbase
+    # oltre subsidy -> invalido), c4.
+    now = time_at(2)
+    c2 = mine_block(params, b1, 2, now, nonce=1)
+    res = accept(chain, c2, now=now)
+    # Pari lavoro con b2: parita' mantiene b2 attivo, c2 resta valido laterale.
+    assert res.status == ChainStatus.ACCEPTED
     assert chain.tip().block_hash == b2.block_hash
 
-    sub3 = block_subsidy(4, halving_interval=params.halving_interval)
-    now = time_at(4)
-    c3 = mine_block(params, c2, 4, now, coinbase_value=sub3 + 1)
+    sub3 = subsidy(params, 3)
+    now = time_at(3)
+    c3 = mine_block(params, c2, 3, now, coinbase_value=sub3 + 1)
     res = accept(chain, c3, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
     assert "coinbase exceeds subsidy + fees" in res.reason
 
     # Rollback completo: la testa resta b2.
     assert chain.tip().block_hash == b2.block_hash
-    assert chain.get_block(c3.hash).status == ChainStatus.INVALID
+    assert chain.storage.get_block(c3.block_hash).status == "invalid"
 
-    # c4 discendente di c3: genitore invalido.
-    now = time_at(5)
-    c4 = mine_block(params, c3, 5, now)
+    # c4 discendente di c3: genitore invalido -> rifiutato, non memorizzato.
+    now = time_at(4)
+    c4 = mine_block(params, c3, 4, now)
     res = accept(chain, c4, now=now)
     assert res.status == ChainStatus.INVALID, res.reason
     assert "parent is invalid" in res.reason
-    assert chain.get_block(c4.hash).status == ChainStatus.INVALID
+    assert chain.get_block(c4.block_hash) is None
 
-    # Rinvio di c3: già noto come invalido.
+    # Rinvio di c3: gia' noto come invalido.
     res = accept(chain, c3, now=now)
     assert res.status == ChainStatus.INVALID
     assert "known invalid" in res.reason
@@ -861,7 +880,7 @@ def test_orphan_does_not_change_state():
     hash_before = chain.utxo_set_hash()
 
     now = time_at(1)
-    cb = coinbase_tx(1, block_subsidy(1, halving_interval=params.halving_interval))
+    cb = coinbase_tx(1, subsidy(params, 1))
     header = BlockHeader(
         version=1,
         height=1,
