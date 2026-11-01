@@ -254,18 +254,19 @@ def test_parse_der_missing_r():
 
 
 def test_parse_der_bad_r_length():
-    # rlen = 0.
-    inner = b"\x02\x00\x02\x01\x01"
-    der = b"\x30" + bytes((len(inner),)) + inner
+    # rlen = 0, total length >= 8 to pass the first check.
+    inner = b"\x02\x00\x02\x01\x01\x00\x00"  # 7 bytes inner
+    der = b"\x30" + bytes((len(inner),)) + inner  # 9 bytes total
     with pytest.raises(SignatureError, match="bad DER r length"):
         parse_der_signature(der)
 
 
 def test_parse_der_missing_s():
-    # slen = 0.
-    inner = b"\x02\x01\x01\x02\x00"
-    der = b"\x30" + bytes((len(inner),)) + inner
-    with pytest.raises(SignatureError, match="bad DER s length"):
+    # der[pos] != 0x02 at the s position.
+    inner = b"\x02\x01\x01\x01\x01"  # second element tag is 0x01, not 0x02
+    der = b"\x30" + bytes((len(inner),)) + inner  # 7 bytes... need >= 8
+    der = b"\x30" + bytes((len(inner) + 1,)) + inner + b"\x00"  # 8 bytes
+    with pytest.raises(SignatureError, match="missing DER s"):
         parse_der_signature(der)
 
 
@@ -285,11 +286,11 @@ def test_parse_der_scalar_out_of_range():
 
 
 def test_parse_der_high_s():
-    # s > HALF_ORDER.
-    high_s = (
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364142
-    )
-    der = _der_seq(b"\x01", high_s.to_bytes(33, "big"))
+    # s > HALF_ORDER but s < ORDER, so range check passes and high-S fires.
+    from core.script import SECP256K1_ORDER as _ORDER
+    HALF_ORDER = _ORDER // 2
+    high_s = HALF_ORDER + 1
+    der = _der_seq(b"\x01", high_s.to_bytes((high_s.bit_length() + 7) // 8, "big"))
     with pytest.raises(SignatureError, match="high-S signature"):
         parse_der_signature(der)
 

@@ -9,9 +9,10 @@ from __future__ import annotations
 from hypothesis import given, strategies as st
 from hypothesis.control import assume
 
+from core.block import Block, BlockHeader, merkle_root
 from core.chain import Chain, ChainParams, ChainStatus
-from core.block import Block
-from core.params import MAX_BLOCK_SIZE
+from core.params import block_subsidy
+from core.tx import COINBASE_INDEX, NULL_TXID, Transaction, TxIn, TxOut, encode_coinbase_height
 
 
 @given(
@@ -28,16 +29,16 @@ def test_flipping_header_byte_never_raises(seed: int, byte_index: int, flip_valu
         now = genesis.header.timestamp + 120
 
         # Build a valid block at height 1.
-        cb = Transaction_for_test(
+        cb = Transaction(
             1,
-            (TxIn_for_test(NULL_TXID_for_test(), COINBASE_INDEX_for_test(), encode_coinbase_height_for_test(1)),),
-            (TxOut_for_test(subsidy_for_test(params, 1), b"\x51"),),
+            (TxIn(NULL_TXID, COINBASE_INDEX, encode_coinbase_height(1)),),
+            (TxOut(block_subsidy(1), b"\x51"),),
         )
-        header = BlockHeader_for_test(
+        header = BlockHeader(
             version=1,
             height=1,
             prev_hash=genesis.block_hash,
-            merkle_root=merkle_root_for_test([cb.txid()]),
+            merkle_root=merkle_root([cb.txid()]),
             timestamp=now,
             target=params.pow_limit,
             nonce=seed,
@@ -47,17 +48,13 @@ def test_flipping_header_byte_never_raises(seed: int, byte_index: int, flip_valu
 
         raw = bytearray(block.serialize())
         assume(len(raw) > byte_index)
-        original_byte = raw[byte_index]
         raw[byte_index] = flip_value
 
         # Deserialize the mutated block.
-        from core.block import Block as RealBlock
-
         try:
-            mutated = RealBlock.from_bytes(bytes(raw))
+            mutated = Block.from_bytes(bytes(raw))
         except Exception:
             # Deserialization failure is fine - it's a rejection, not a crash.
-            chain.close()
             return
 
         # accept_block must not raise an unhandled exception.
@@ -75,20 +72,3 @@ def test_flipping_header_byte_never_raises(seed: int, byte_index: int, flip_valu
             assert chain.utxo_set_hash() == before_hash
     finally:
         chain.close()
-
-
-# Re-export names needed for block construction but imported lazily to avoid
-# circular import issues at module load.
-from core.block import (  # noqa: E402
-    BlockHeader as BlockHeader_for_test,
-)
-from core.tx import (  # noqa: E402
-    COINBASE_INDEX as COINBASE_INDEX_for_test,
-    NULL_TXID as NULL_TXID_for_test,
-    Transaction as Transaction_for_test,
-    TxIn as TxIn_for_test,
-    TxOut as TxOut_for_test,
-    encode_coinbase_height as encode_coinbase_height_for_test,
-)
-from core.params import block_subsidy as subsidy_for_test
-from core.block import merkle_root as merkle_root_for_test

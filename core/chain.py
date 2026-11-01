@@ -159,14 +159,15 @@ class ChainParams:
         object.__setattr__(self, "network_tag", bytes(self.network_tag))
 
         checkpoints = tuple(self.checkpoints)
+        for checkpoint in checkpoints:
+            if not isinstance(checkpoint, Checkpoint):
+                raise ChainError("checkpoints must be Checkpoint")
         if not checkpoints or checkpoints[0].height != 0:
             checkpoints = (Checkpoint(0, self.genesis.block_hash),) + checkpoints
         if checkpoints[0].hash != self.genesis.block_hash:
             raise ChainError("checkpoint 0 does not match genesis")
         last = -1
         for checkpoint in checkpoints:
-            if not isinstance(checkpoint, Checkpoint):
-                raise ChainError("checkpoints must be Checkpoint")
             if checkpoint.height <= last:
                 raise ChainError("checkpoints must be strictly increasing")
             if len(checkpoint.hash) != 64:
