@@ -23,10 +23,12 @@ REF = Path(__file__).resolve().parent
 
 MUTATIONS = [
     ("reference/core/chain.py", "if changes.coinbase_value > allowed + changes.fees:", "if changes.coinbase_value >= allowed + changes.fees:", "coinbase_value > becomes >="),
-    ("reference/core/chain.py", "if utxo.is_coinbase:\n            if height - utxo.height < coinbase_maturity:", "if utxo.is_coinbase:\n            if False:", "remove coinbase maturity check"),
+    ("reference/core/chain.py", "if height - utxo.height < coinbase_maturity:", "if False:", "remove coinbase maturity check"),
     ("reference/core/chain.py", "if block.header.target != expected_target:", "if False:", "remove target == expected check"),
     ("reference/core/block.py", "if timestamp <= mtp:", "if timestamp < mtp:", "timestamp <= mtp becomes <"),
     ("reference/core/block.py", "if timestamp > now + MAX_FUTURE_DRIFT:", "if timestamp > now + MAX_FUTURE_DRIFT + 3600:", "future limit +2h becomes +3h"),
+    ("reference/core/chain.py", 'for item in data.get("restore", []):\n                self.storage.put_utxo(_utxo_from_undo(item))', "pass  # skip restore", "skip restoring spent UTXOs in reorg disconnect"),
+    ("reference/core/chain.py", "if key in self._removed:\n            return None", "pass  # skip double-spend check", "remove in-block double-spend check"),
     ("reference/core/chain.py", 'if checkpoint is not None and checkpoint.hash != block.block_hash:', "if False:", "remove checkpoint check on connect"),
     ("reference/core/params.py", "era = height // halving_interval", "era = height // halving_interval + 1", "halving shift off by one"),
     ("reference/core/chain.py", "if emitted > MAX_MONEY:", "if False:", "remove cumulative MAX_MONEY check"),
