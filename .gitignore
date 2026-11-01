@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+pkg/
+
+# Environment
+.env*
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log

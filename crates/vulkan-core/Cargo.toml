@@ -1,0 +1,29 @@
+[package]
+name = "vulkan-core"
+version = "0.1.0"
+edition = "2021"
+description = "Vulkan consensus core: params, tx, block, script, address, difficulty, genesis, chain, storage"
+license = "MIT"
+
+[dependencies]
+sha2 = "0.10"
+k256 = { version = "0.13", features = ["ecdsa", "sha256", "pkcs8"] }
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+num-bigint = "0.4"
+rusqlite = { version = "0.31", features = ["bundled"], optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+hex = "0.4"
+
+[features]
+default = ["storage"]
+storage = ["rusqlite"]
+
+[dev-dependencies]
+proptest = "1.4"
+
+[lib]
+name = "vulkan_core"
+path = "src/lib.rs"
