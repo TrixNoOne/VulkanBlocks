@@ -495,7 +495,8 @@ def _run(
             _push(stack, b"\x01" if verify_digest(pubkey, signature, ctx.digest) else b"")
         elif opcode == OP_CHECKLOCKTIMEVERIFY:
             _check_locktime(stack, ctx)
-        else:  # pragma: no cover - il parser filtra gli opcode
+        else:
+
             raise ScriptError(f"unsupported opcode 0x{opcode:02x}")
 
     if conditions:

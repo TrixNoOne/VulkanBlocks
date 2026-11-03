@@ -1,0 +1,15 @@
+{
+  "name": "bad_timestamp",
+  "steps": [
+    {
+      "block_hash": "1b74e186ba28aaf3f51d573c0360f8b035679ec0343cfbc2def758739cc6aa401adcfce8db0841bebd690a107f749ccaa7cffefdf5073213bbbef4852cc02d05",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f3ed8718bc578b7f005b62e8e80485cc7acadd6d3f5b8f9cddb0903b385bfe0b600dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c031bf1200000000015100000000",
+      "reason": "timestamp 1793318400 not above MTP 1793318400",
+      "status": "INVALID",
+      "stored": false,
+      "tip_hash": "5d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f",
+      "tip_height": 0,
+      "utxo_set_hash": "37a2f04a142aa8150a6decd98c624b128fe49cdd546591389e46e6d75204fbaf"
+    }
+  ]
+}

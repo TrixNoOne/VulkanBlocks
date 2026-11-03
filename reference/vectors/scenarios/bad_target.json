@@ -1,0 +1,15 @@
+{
+  "name": "bad_target",
+  "steps": [
+    {
+      "block_hash": "86d3855699c8bb85fc4f15ae2af9a3bc38cf762aa8a2d4169abf559626a693b50d0474cfd07824d93dabab4bef5077c49d919a9bf71bbea37229c32f0506ef60",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f3ed8718bc578b7f005b62e8e80485cc7acadd6d3f5b8f9cddb0903b385bfe0b678dee36a00000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c031bf1200000000015100000000",
+      "reason": "target does not match ASERT",
+      "status": "INVALID",
+      "stored": false,
+      "tip_hash": "5d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f",
+      "tip_height": 0,
+      "utxo_set_hash": "37a2f04a142aa8150a6decd98c624b128fe49cdd546591389e46e6d75204fbaf"
+    }
+  ]
+}

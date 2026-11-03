@@ -1,0 +1,25 @@
+{
+  "name": "script_error_in_block",
+  "steps": [
+    {
+      "block_hash": "de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f3ed8718bc578b7f005b62e8e80485cc7acadd6d3f5b8f9cddb0903b385bfe0b678dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c031bf1200000000015100000000",
+      "reason": "",
+      "status": "ACCEPTED",
+      "stored": true,
+      "tip_hash": "de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b",
+      "tip_height": 1,
+      "utxo_set_hash": "f3a5ed1cba4c8ed613dc2edfbde5969c9fa4d5bfecf79b48121827ed1cccbc40"
+    },
+    {
+      "block_hash": "9f1e151b6a3a2cb9ae21f60be6b397d533da5b75e7fcf6d2d64564b0d66453388a6e2efeb988c30cd454114b1eb58021f3ad68eb32442e6ca155e08cfe30ee13",
+      "block_hex": "0100000002000000de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b5389d3d6e8e29d8e7a38b54bfb60e3534827a53997a3eb1fbc2d8d25912e5800f0dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000201000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020102ffffffff01c031bf12000000000151000000000100000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000176ffffffff010100000000000000015100000000",
+      "reason": "missing utxo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0",
+      "status": "INVALID",
+      "stored": false,
+      "tip_hash": "de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b",
+      "tip_height": 1,
+      "utxo_set_hash": "f3a5ed1cba4c8ed613dc2edfbde5969c9fa4d5bfecf79b48121827ed1cccbc40"
+    }
+  ]
+}

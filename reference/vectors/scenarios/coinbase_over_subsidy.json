@@ -1,0 +1,15 @@
+{
+  "name": "coinbase_over_subsidy",
+  "steps": [
+    {
+      "block_hash": "bbe1b956125099724aeec34f923df29169ad18c1cb384d4831f31111a22bb5a9563a53995a74c9c698a22bcb1ccc135b0a1e3edf5d3ea5b20469486e7c710237",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1ff210f524635e489b22818c7e15d59e2ee56939cad6777345886ee059b50d18c278dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c131bf1200000000015100000000",
+      "reason": "coinbase exceeds subsidy + fees",
+      "status": "INVALID",
+      "stored": false,
+      "tip_hash": "5d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f",
+      "tip_height": 0,
+      "utxo_set_hash": "37a2f04a142aa8150a6decd98c624b128fe49cdd546591389e46e6d75204fbaf"
+    }
+  ]
+}

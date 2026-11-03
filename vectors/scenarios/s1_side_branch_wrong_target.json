@@ -1,0 +1,32 @@
+{
+  "name": "s1_side_branch_wrong_target",
+  "steps": [
+    {
+      "block_hash": "de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f3ed8718bc578b7f005b62e8e80485cc7acadd6d3f5b8f9cddb0903b385bfe0b678dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c031bf1200000000015100000000",
+      "reason": "",
+      "status": "ACCEPTED",
+      "stored": true,
+      "tip_hash": "de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b",
+      "tip_height": 1
+    },
+    {
+      "block_hash": "cfb0daa80f6b9ed658eae470eb0859854bc5df01a08017b367aa17cdd2888e523106c3919cfff4815fd0f4f060e29c644b66f94acd9a7d3e1291fd1078256b75",
+      "block_hex": "0100000002000000de5697ed416a8bd11c0b4b81eda0f9578d890ebe05830db6dae371c4405255d65f5cf2582696c3bc955d17c3596a108f16f5e8dfb5440a6f2078bce7a9e6f91b86e408e7d20a1106ed0414510bb93a8bd2cbe47a1d871f4212004cc7db2753f5f0dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020102ffffffff01c031bf1200000000015100000000",
+      "reason": "",
+      "status": "ACCEPTED",
+      "stored": true,
+      "tip_hash": "cfb0daa80f6b9ed658eae470eb0859854bc5df01a08017b367aa17cdd2888e523106c3919cfff4815fd0f4f060e29c644b66f94acd9a7d3e1291fd1078256b75",
+      "tip_height": 2
+    },
+    {
+      "block_hash": "9e4c850632e838f785b08d7d3f2f7dc6e40b95ea41c2fac99bbfaadb5779e86c672f3ea32d9800ac865b0dde3969091c4323b86c01baed83899aec4d58dfa4a1",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f3ed8718bc578b7f005b62e8e80485cc7acadd6d3f5b8f9cddb0903b385bfe0b6f0dee36a00000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe01000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020101ffffffff01c031bf1200000000015100000000",
+      "reason": "target does not match ASERT",
+      "status": "INVALID",
+      "stored": false,
+      "tip_hash": "cfb0daa80f6b9ed658eae470eb0859854bc5df01a08017b367aa17cdd2888e523106c3919cfff4815fd0f4f060e29c644b66f94acd9a7d3e1291fd1078256b75",
+      "tip_height": 2
+    }
+  ]
+}

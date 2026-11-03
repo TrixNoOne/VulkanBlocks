@@ -364,7 +364,8 @@ class Storage:
             return None
         try:
             data = json.loads(row["data"])
-        except json.JSONDecodeError as exc:  # pragma: no cover - corruzione
+        except json.JSONDecodeError as exc:
+
             raise StorageError("corrupt undo data") from exc
         if not isinstance(data, dict):
             raise StorageError("corrupt undo data")

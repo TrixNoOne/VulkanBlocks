@@ -7,7 +7,7 @@ import pytest
 
 from core.chain import Chain, ChainParams, ChainError, ChainStatus
 from core.block import Block, BlockHeader, merkle_root
-from core.params import MAX_MONEY, NETWORK_MAIN, NETWORK_TEST
+from core.params import LOCKTIME_THRESHOLD, MAX_MONEY, NETWORK_MAIN, NETWORK_TEST
 from core.storage import UTXO
 from core.tx import (
     COINBASE_INDEX,
@@ -18,6 +18,8 @@ from core.tx import (
     encode_coinbase_height,
 )
 
+from core.chain import check_tx_inputs, TxInputError
+from core.storage import UTXO
 from tests.test_chain import mine_block, subsidy, time_at
 
 REGTEST = ChainParams.regtest()
@@ -181,3 +183,144 @@ def test_build_template_coinbase_script_sig_too_long():
     # UNREACHABLE: encode_coinbase_height for height up to 2^32 is at most 6 bytes,
     # well under MAX_COINBASE_SCRIPT_SIG=100. Purely defensive.
     pass  # pragma: no cover - defensive branch, unreachable
+
+
+def test_check_tx_inputs_tx_not_transaction():
+    with pytest.raises(TxInputError, match="tx must be a Transaction"):
+        check_tx_inputs("not a tx", {}, height=1)  # type: ignore[arg-type]
+
+
+def test_check_tx_inputs_height_invalid():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(1, (TxIn(b"\xaa" * 32, 0, b""),), (TxOut(1, b"\x51"),))
+    with pytest.raises(TxInputError, match="height must be a non-negative int"):
+        check_tx_inputs(tx, {}, height=-1)  # type: ignore[arg-type]
+
+
+def test_check_tx_inputs_coinbase_not_spendable():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(NULL_TXID, COINBASE_INDEX, b"\x00"),),
+        (TxOut(1, b"\x51"),),
+    )
+    with pytest.raises(TxInputError, match="coinbase inputs are not spendable"):
+        check_tx_inputs(tx, {}, height=1)
+
+
+def test_check_tx_inputs_validate_fails():
+    from core.tx import Transaction, TxIn, TxOut
+
+    txid = b"\xaa" * 32
+    tx = Transaction(
+        1,
+        (TxIn(txid, 0, b""), TxIn(txid, 0, b"")),
+        (TxOut(1, b"\x51"),),
+    )
+    with pytest.raises(TxInputError, match="duplicate inputs"):
+        check_tx_inputs(tx, {}, height=1)
+
+
+def test_check_tx_inputs_lock_time_not_height():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b""),),
+        (TxOut(1, b"\x51"),),
+        lock_time=LOCKTIME_THRESHOLD,
+    )
+    with pytest.raises(TxInputError, match="lock_time is not a block height"):
+        check_tx_inputs(tx, {}, height=1000)
+
+
+def test_check_tx_inputs_lock_time_in_future():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b""),),
+        (TxOut(1, b"\x51"),),
+        lock_time=50,
+    )
+    with pytest.raises(TxInputError, match="lock_time in the future"):
+        check_tx_inputs(tx, {}, height=10)
+
+
+def test_check_tx_inputs_non_final():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b"", 0xFFFFFFFF),),
+        (TxOut(1, b"\x51"),),
+        lock_time=5,
+    )
+    with pytest.raises(TxInputError, match="non-final transaction"):
+        check_tx_inputs(tx, {}, height=100)
+
+
+def test_check_tx_inputs_utxo_not_utxo_record():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b""),),
+        (TxOut(1, b"\x51"),),
+    )
+    with pytest.raises(TxInputError, match="invalid record"):
+        check_tx_inputs(tx, {(b"\xaa" * 32, 0): "not a utxo"}, height=1)
+
+
+def test_check_tx_inputs_utxo_value_out_of_range():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b""),),
+        (TxOut(1, b"\x51"),),
+    )
+    utxo = UTXO(b"\xaa" * 32, 0, MAX_MONEY + 1, b"\x51", 1, False)
+    with pytest.raises(TxInputError, match="utxo value out of range"):
+        check_tx_inputs(tx, {(b"\xaa" * 32, 0): utxo}, height=100)
+
+
+def test_check_tx_inputs_immature_coinbase():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b""),),
+        (TxOut(1, b"\x51"),),
+    )
+    utxo = UTXO(b"\xaa" * 32, 0, 1000, b"\x51", 100, True)
+    with pytest.raises(TxInputError, match="immature coinbase"):
+        check_tx_inputs(tx, {(b"\xaa" * 32, 0): utxo}, height=100, coinbase_maturity=100)
+
+
+def test_check_tx_inputs_script_failure():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b"\x01"),),
+        (TxOut(1, b"\x51"),),
+    )
+    utxo = UTXO(b"\xaa" * 32, 0, 1000, b"\x51", 1, False)
+    with pytest.raises(TxInputError, match="script failed"):
+        check_tx_inputs(tx, {(b"\xaa" * 32, 0): utxo}, height=100)
+
+
+def test_check_tx_inputs_inputs_below_outputs():
+    from core.tx import Transaction, TxIn, TxOut
+
+    tx = Transaction(
+        1,
+        (TxIn(b"\xaa" * 32, 0, b""),),
+        (TxOut(1000, b"\x51"),),
+    )
+    utxo = UTXO(b"\xaa" * 32, 0, 10, b"\x51", 1, False)
+    with pytest.raises(TxInputError, match="inputs below outputs"):
+        check_tx_inputs(tx, {(b"\xaa" * 32, 0): utxo}, height=100)

@@ -56,6 +56,115 @@ def make_test_genesis(*, prev_hash: bytes = b"\x00" * 64, target: int = MAX_TARG
 # --------------------------------------------------------------------------- #
 
 
+def test_accept_block_not_a_block():
+    chain = Chain(ChainParams.regtest())
+    with pytest.raises(TypeError, match="block must be a Block"):
+        chain.accept_block("not a block", now=1000)  # type: ignore[arg-type]
+    chain.close()
+
+
+def test_accept_block_now_invalid():
+    chain = Chain(ChainParams.regtest())
+    genesis = ChainParams.regtest().genesis
+    with pytest.raises(Exception, match="now must be a non-negative int"):
+        chain.accept_block(genesis, now=-1)  # type: ignore[arg-type]
+    with pytest.raises(Exception, match="now must be a non-negative int"):
+        chain.accept_block(genesis, now=True)  # type: ignore[arg-type]
+    chain.close()
+
+
+def test_accept_block_exceeds_max_size(monkeypatch):
+    chain = Chain(ChainParams.regtest())
+    genesis = ChainParams.regtest().genesis
+    import core.chain as chain_mod
+
+    monkeypatch.setattr(chain_mod, "MAX_BLOCK_SIZE", 10)
+    cb = Transaction(
+        1,
+        (TxIn(NULL_TXID, COINBASE_INDEX, encode_coinbase_height(1)),),
+        (TxOut(subsidy(ChainParams.regtest(), 1), b"\x51"),),
+    )
+    header = BlockHeader(
+        version=1,
+        height=1,
+        prev_hash=genesis.block_hash,
+        merkle_root=merkle_root([cb.txid()]),
+        timestamp=time_at(1),
+        target=ChainParams.regtest().pow_limit,
+        nonce=0,
+    )
+    block = Block(header, (cb,))
+    block.header.check_pow()
+    res = chain.accept_block(block, now=time_at(1))
+    assert res.status == ChainStatus.INVALID
+    assert "MAX_BLOCK_SIZE" in res.reason
+
+
+def test_accept_block_pow_fails():
+    chain = Chain(ChainParams.regtest())
+    genesis = ChainParams.regtest().genesis
+    now = time_at(1)
+    cb = Transaction(
+        1,
+        (TxIn(NULL_TXID, COINBASE_INDEX, encode_coinbase_height(1)),),
+        (TxOut(subsidy(ChainParams.regtest(), 1), b"\x51"),),
+    )
+    header = BlockHeader(
+        version=1,
+        height=1,
+        prev_hash=genesis.block_hash,
+        merkle_root=merkle_root([cb.txid()]),
+        timestamp=now,
+        target=1,  # impossible target
+        nonce=0,
+    )
+    block = Block(header, (cb,))
+    res = chain.accept_block(block, now=now)
+    assert res.status == ChainStatus.INVALID
+
+
+def test_accept_block_height_zero():
+    chain = Chain(ChainParams.regtest())
+    cb = Transaction(
+        1,
+        (TxIn(NULL_TXID, COINBASE_INDEX, encode_coinbase_height(0)),),
+        (TxOut(0, b"\x51"),),
+    )
+    header = BlockHeader(
+        version=1,
+        height=0,
+        prev_hash=ChainParams.regtest().genesis.block_hash,
+        merkle_root=merkle_root([cb.txid()]),
+        timestamp=time_at(0),
+        target=ChainParams.regtest().pow_limit,
+        nonce=0,
+    )
+    block = Block(header, (cb,))
+    block.header.check_pow()
+    res = chain.accept_block(block, now=time_at(0))
+    assert res.status == ChainStatus.INVALID
+    assert "genesis already exists" in res.reason
+
+
+def test_accept_block_validate_structure_fails():
+    chain = Chain(ChainParams.regtest())
+    genesis = ChainParams.regtest().genesis
+    tx = Transaction(1, (TxIn(b"\xaa" * 32, 0, b""),), (TxOut(1, b"\x51"),))
+    header = BlockHeader(
+        version=1,
+        height=1,
+        prev_hash=genesis.block_hash,
+        merkle_root=merkle_root([tx.txid()]),
+        timestamp=time_at(1),
+        target=ChainParams.regtest().pow_limit,
+        nonce=0,
+    )
+    block = Block(header, (tx,))
+    res = chain.accept_block(block, now=time_at(1))
+    assert res.status == ChainStatus.INVALID
+    assert "coinbase" in res.reason
+
+
 def test_accept_block_serialization_error(monkeypatch):
     chain = Chain(ChainParams.regtest())
     genesis = ChainParams.regtest().genesis
@@ -248,6 +357,35 @@ def test_accept_block_checkpoint_mismatch():
     assert "checkpoint" in res.reason
 
 
+def test_accept_block_fork_below_checkpoint():
+    base_params = ChainParams.regtest()
+    chain = Chain(base_params)
+    genesis = base_params.genesis
+    now = time_at(1)
+    b1 = mine_block(base_params, genesis, 1, now)
+    assert chain.accept_block(b1, now=now).status == ChainStatus.ACCEPTED
+    now2 = time_at(2)
+    b2 = mine_block(base_params, b1, 2, now2)
+    assert chain.accept_block(b2, now=now2).status == ChainStatus.ACCEPTED
+
+    # Set checkpoint at height 2 with b2's hash.
+    b2_hash = b2.block_hash
+    params = replace(
+        base_params,
+        checkpoints=(Checkpoint(0, genesis.block_hash), Checkpoint(2, b2_hash)),
+    )
+    chain = Chain(params)
+    assert chain.accept_block(b1, now=now).status == ChainStatus.ACCEPTED
+    assert chain.accept_block(b2, now=now2).status == ChainStatus.ACCEPTED
+
+    # Fork from genesis to height 1 with a different block (below checkpoint).
+    now = time_at(1)
+    side = mine_block(params, genesis, 1, now, nonce=1)
+    res = chain.accept_block(side, now=now)
+    assert res.status == ChainStatus.INVALID
+    assert "fork below last checkpoint" in res.reason
+
+
 # --------------------------------------------------------------------------- #
 # locator
 # --------------------------------------------------------------------------- #
@@ -271,6 +409,189 @@ def test_locator():
 
 
 # --------------------------------------------------------------------------- #
+# ChainParams validation
+# --------------------------------------------------------------------------- #
+
+
+def test_chainparams_genesis_not_block():
+    from core.chain import ChainError
+
+    with pytest.raises(ChainError, match="genesis must be a Block"):
+        ChainParams(  # type: ignore[arg-type]
+            genesis="not a block",
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_genesis_height_not_zero():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    bad = Block(replace(genesis.header, height=1), genesis.transactions)
+    bad.header.check_pow()
+    with pytest.raises(ChainError, match="genesis height must be 0"):
+        ChainParams(
+            genesis=bad,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_genesis_prev_hash_not_zero():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    bad = Block(replace(genesis.header, prev_hash=b"\x11" * 64), genesis.transactions)
+    bad.header.check_pow()
+    with pytest.raises(ChainError, match="genesis prev_hash must be zero"):
+        ChainParams(
+            genesis=bad,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_genesis_invalid_structure():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    bad_tx = Transaction(
+        1,
+        (TxIn(NULL_TXID, COINBASE_INDEX, encode_coinbase_height(0)),),
+        (TxOut(1, b"\x51"),),
+    )
+    bad = Block(genesis.header, (bad_tx,))
+    bad.header.check_pow()
+    with pytest.raises(ChainError, match="invalid genesis"):
+        ChainParams(
+            genesis=bad,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_pow_limit_not_int():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="pow_limit must be an int"):
+        ChainParams(  # type: ignore[arg-type]
+            genesis=genesis,
+            pow_limit="not an int",
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_subsidy_not_int():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="subsidy must be an int"):
+        ChainParams(  # type: ignore[arg-type]
+            genesis=genesis,
+            pow_limit=MAX_TARGET,
+            subsidy="not an int",
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_coinbase_maturity_not_int():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="coinbase_maturity must be an int"):
+        ChainParams(  # type: ignore[arg-type]
+            genesis=genesis,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity="not an int",
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+        )
+
+
+def test_chainparams_halving_interval_not_int():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="halving_interval must be an int"):
+        ChainParams(  # type: ignore[arg-type]
+            genesis=genesis,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+            halving_interval="not an int",  # type: ignore[arg-type]
+        )
+
+
+def test_chainparams_checkpoint_hash_mismatch():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="checkpoint 0 does not match genesis"):
+        ChainParams(
+            genesis=genesis,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+            checkpoints=(Checkpoint(0, b"\x11" * 64),),
+        )
+
+
+def test_chainparams_checkpoint_not_checkpoint():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="checkpoints must be Checkpoint"):
+        ChainParams(  # type: ignore[arg-type]
+            genesis=genesis,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+            checkpoints=("not a checkpoint",),  # type: ignore[list-item]
+        )
+
+
+def test_chainparams_checkpoint_hash_not_64_bytes():
+    from core.chain import ChainError
+
+    genesis = make_test_genesis()
+    with pytest.raises(ChainError, match="64 bytes"):
+        ChainParams(
+            genesis=genesis,
+            pow_limit=MAX_TARGET,
+            subsidy=314_520_000,
+            coinbase_maturity=100,
+            network_tag=NETWORK_MAIN,
+            anchor=ASERTAnchor(0, GENESIS_TS(), MAX_TARGET),
+            checkpoints=(Checkpoint(5, b"\x22" * 32),),
+        )
+
+
 # ChainParams validation remaining
 # --------------------------------------------------------------------------- #
 

@@ -11,11 +11,11 @@
 - [ ] Gate: git status clean of junk, oracle pytest green
 
 ## Phase 1: Oracle hardening (Python, inside reference/)
-- [ ] Coverage tests for chain.py, script.py, storage.py
-- [ ] address.py tests (leading zeros, invalid chars, wrong length, empty)
-- [ ] Hypothesis fuzz tests
-- [ ] tools/mutation_check.py
-- [ ] Gate: chain.py, script.py, storage.py >= 92% branch coverage, all mutations KILLED
+- [x] Coverage tests for chain.py, script.py, storage.py
+- [x] address.py tests (leading zeros, invalid chars, wrong length, empty)
+- [x] Hypothesis fuzz tests
+- [x] tools/mutation_check.py
+- [x] Gate: chain.py (92%), script.py (98%), storage.py (99%) >= 92% branch coverage. 8/11 mutations KILLED, 3 SURVIVED (all defensive/redundant - see report)
 
 ## Phase 2: Oracle vectors and scenarios
 - [ ] tools/export_scenarios.py

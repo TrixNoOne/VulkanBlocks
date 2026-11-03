@@ -1,0 +1,15 @@
+{
+  "name": "s3_coinbase_height_mismatch",
+  "steps": [
+    {
+      "block_hash": "f8de8c0194f1c228bd0b800d36777c432e6a6cdb60a98000c0e8cc059cb0cfb81ff5834b5c9d17cc036701f609399862fa0f8ff15c81e310d1092be0daac6cc4",
+      "block_hex": "01000000010000005d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f8af2dd74591d45ca9da6217d205fb2922d12f571cb5098da377b793cd2e0389c78dee36a00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff020109ffffffff01c031bf1200000000015100000000",
+      "reason": "coinbase height 9 != block height 1",
+      "status": "INVALID",
+      "stored": false,
+      "tip_hash": "5d79f5c524549b93bf86f7e22776fa523c2f0f8779f48019f8f0e17b581a0a4bbdfe68477e94742d23726fe46c1d1252dccd82e8f9228fbb9c5b28ffe5e10e1f",
+      "tip_height": 0,
+      "utxo_set_hash": ""
+    }
+  ]
+}
