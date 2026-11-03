@@ -16,9 +16,9 @@ import pytest
 sys.path.insert(0, 'reference')
 
 from core.block import Block
-from core.chain import Chain, ChainParams, ChainStatus
-from core.params import ChainParams  # This won't work directly
-
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from core.params import CP
 
 @given(
     block_height=st.integers(min_value=1, max_value=1000),

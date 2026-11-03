@@ -1,1 +1,1 @@
-"""Vulkan node."""
+"""Vulkan Node - Blockchain node daemon"""

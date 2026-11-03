@@ -1,0 +1,602 @@
+[
+  {
+    "id": "rand_0",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_1",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_2",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_3",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_4",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_5",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_6",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_7",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_8",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_9",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_10",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_11",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_12",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_13",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_14",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_15",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_16",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_17",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_18",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_19",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_20",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_21",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_22",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_23",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_24",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_25",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_26",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_27",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_28",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_29",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_30",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_31",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_32",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_33",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_34",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_35",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_36",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_37",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_38",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_39",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_40",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_41",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_42",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_43",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_44",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_45",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_46",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_47",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_48",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_49",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_50",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_51",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_52",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_53",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_54",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_55",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_56",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_57",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_58",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_59",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_60",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_61",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_62",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_63",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_64",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_65",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_66",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_67",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_68",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_69",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_70",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_71",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_72",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_73",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_74",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_75",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_76",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_77",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_78",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_79",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_80",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_81",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_82",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_83",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_84",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_85",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_86",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_87",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-cb-height"
+  },
+  {
+    "id": "rand_88",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_89",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_90",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-pow"
+  },
+  {
+    "id": "rand_91",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_92",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_93",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_94",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_95",
+    "valid": false,
+    "status": "rejected",
+    "reason": "bad-target"
+  },
+  {
+    "id": "rand_96",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_97",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_98",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  },
+  {
+    "id": "rand_99",
+    "valid": true,
+    "status": "accepted",
+    "reason": null
+  }
+]

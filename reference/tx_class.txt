@@ -1,0 +1,68 @@
+class Transaction:
+    """Transazione immutabile; l'ordine degli input/output e' consensus-relevant."""
+
+    version: int
+    inputs: tuple[TxIn, ...]
+    outputs: tuple[TxOut, ...]
+    lock_time: int = 0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "version", _as_uint(self.version, "version", UINT32_MAX))
+        object.__setattr__(self, "lock_time", _as_uint(self.lock_time, "lock_time", UINT32_MAX))
+        object.__setattr__(self, "inputs", tuple(self.inputs))
+        object.__setattr__(self, "outputs", tuple(self.outputs))
+        for txin in self.inputs:
+            if not isinstance(txin, TxIn):
+                raise TxValidationError("inputs must be TxIn")
+        for txout in self.outputs:
+            if not isinstance(txout, TxOut):
+                raise TxValidationError("outputs must be TxOut")
+
+    @property
+    def is_coinbase(self) -> bool:
+        return len(self.inputs) == 1 and self.inputs[0].is_null
+
+    def txid(self) -> bytes:
+        """Identificatore: double SHA-256 della forma serializzata."""
+        return double_sha256(self.serialize())
+
+    def serialize(self) -> bytes:
+        parts = [struct.pack("<I", self.version), encode_varint(len(self.inputs))]
+        parts.extend(txin.serialize() for txin in self.inputs)
+        parts.append(encode_varint(len(self.outputs)))
+        parts.extend(txout.serialize() for txout in self.outputs)
+        parts.append(struct.pack("<I", self.lock_time))
+        return b"".join(parts)
+
+    @classmethod
+    def from_reader(cls, reader: ByteReader) -> "Transaction":
+        version = reader.read_uint32()
+        inputs = tuple(TxIn.from_reader(reader) for _ in range(reader.read_varint()))
+        outputs = tuple(TxOut.from_reader(reader) for _ in range(reader.read_varint()))
+        lock_time = reader.read_uint32()
+        return cls(version=version, inputs=inputs, outputs=outputs, lock_time=lock_time)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "Transaction":
+        reader = ByteReader(data)
+        tx = cls.from_reader(reader)
+        reader.expect_end()
+        return tx
+
+    def validate(self) -> None:
+        """Controlli strutturali; i controlli UTXO/firma vivono in chain/script."""
+        if not self.inputs:
+            raise TxValidationError("transaction has no inputs")
+        if not self.outputs:
+            raise TxValidationError("transaction has no outputs")
+
+        if self.is_coinbase:
+            if len(self.inputs) != 1:  # difensivo: is_coinbase lo implica gia'
+                raise TxValidationError("coinbase must have exactly one input")
+            # Formato dell'altezza; l'uguaglianza con l'altezza del blocco
+            # e' un controllo contestuale (Block.validate_structure/chain).
+            decode_coinbase_height(self.inputs[0].script_sig)
+        else:
+            for txin in self.inputs:
+                if txin.prev_txid == NULL_TXID:
+                    raise TxValidationError("null prevout only allowed in coinbase")
