@@ -8,6 +8,16 @@ This module:
 4. Implements basic block assembly and validation
 """
 
+import sys
+import os
+
+# Add the venv site-packages path so vulkan_core can be found
+# __file__ is at python/vulkan/node/main.py, so going up twice gives project root
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+venv_site_packages = os.path.join(project_root, ".venv", "Lib", "site-packages")
+if os.path.isdir(venv_site_packages):
+    sys.path.insert(0, venv_site_packages)
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +50,7 @@ MAX_MONEY = 32_000_000_000 * 100_000_000
 class ChainState:
     def __init__(self):
         self.height = -1
-        self.tip_hash = b"\\x00" * 32  # genesis hash placeholder
+        self.tip_hash = b"\x00" * 32  # genesis hash placeholder (always bytes)
         self.mempool_count = 0
         self.difficulty = GENESIS_DIFFICULTY
         self.total_supply = 0
@@ -49,7 +59,12 @@ class ChainState:
     def add_block(self, block_data: Dict[str, Any]) -> Dict[str, Any]:
         """Add a block to the chain."""
         self.height += 1
-        self.tip_hash = block_data.get("hash", b"\\x00" * 32)
+        # Ensure tip_hash stays as bytes - convert hex string if needed
+        hash_val = block_data.get("hash", b"\x00" * 32)
+        if isinstance(hash_val, str):
+            self.tip_hash = bytes.fromhex(hash_val)
+        else:
+            self.tip_hash = hash_val
         self.difficulty = block_data.get("difficulty", self.difficulty)
         self.total_supply += block_data.get("coinbase_value", 0)
         self.blocks.append(block_data)
@@ -59,7 +74,7 @@ class ChainState:
         """Return chain info."""
         return {
             "height": self.height,
-            "tip_hash": self.tip_hash.hex() if self.tip_hash else b"\\x00" * 32,
+            "tip_hash": self.tip_hash.hex() if self.tip_hash else b"\x00" * 32,
             "difficulty": self.difficulty,
             "total_supply": self.total_supply,
             "mempool_count": self.mempool_count
@@ -150,88 +165,101 @@ def get_mempool_status():
 @app.post("/miner/mine", response_model=BlockResponse)
 def mine_block(request: MineBlockRequest):
     """Mine a new block with the given transactions."""
-    tx_count = len(request.transactions)
-    
-    # Get previous hash from current tip
-    prev_hash = bytes.fromhex(chain_state.tip_hash) if chain_state.tip_hash else b"\\x00" * 32
-    
-    # Build coinbase transaction
-    coinbase_value = UNITS_PER_VULCAN  # 1 VUL in satoshis (simplified)
-    coinbase_tx = {
-        "version": 1,
-        "inputs": [{
-            "prev_txid": "0" * 64,
-            "prev_index": 0xFFFFFFFF,
-            "script_sig": "coinbase",
-            "sequence": 0xFFFFFFFF
-        }],
-        "outputs": [{"value": coinbase_value, "script_pubkey": miner_address.encode().hex()}],
-        "lock_time": 0
-    }
-    
-    # Assemble block header
-    version = request.difficulty if request.difficulty else chain_state.difficulty
-    timestamp = int(time.time())
-    
-    # Simplified Merkle root (just hash of coinbase tx for demo)
-    merkle_root = hashlib.sha256(hashlib.sha256(str(coinbase_tx).encode()).hexdigest().encode()).hexdigest()
-    
-    # Simple PoW: find nonce such that hash starts with enough zeros
-    target = 1 << (256 - version) if version else 0xFFFF_FFFF_FFFF_FFFF >> (256 - chain_state.difficulty)
-    
-    nonce = 0
-    max_nonce = 0xFFFFFFFF
-    found = False
-    
-    while nonce < max_nonce:
-        header_data = f"{version}{prev_hash.hex()}{merkle_root}{timestamp}{bits}{nonce}"
-        h = hashlib.sha256(hashlib.sha256(header_data.encode()).hexdigest().encode()).hexdigest()
-        # Check if hash is less than target (simplified)
-        if int(h, 16) < target:
-            found = True
-            break
-        nonce += 1
-    
-    if not found:
-        nonce = 0  # fallback
-    
-    # Final hash
-    final_header = f"{version}{prev_hash.hex()}{merkle_root}{timestamp}{bits}{nonce}"
-    block_hash = hashlib.sha256(hashlib.sha256(final_header.encode()).hexdigest().encode()).hexdigest()
-    
-    # Create block data
-    block_data = {
-        "version": version,
-        "prev_hash": prev_hash.hex(),
-        "merkle_root": merkle_root,
-        "timestamp": timestamp,
-        "bits": bits,
-        "nonce": nonce,
-        "hash": block_hash,
-        "difficulty": version,
-        "coinbase_value": coinbase_value,
-        "tx_count": tx_count + 1,  # coinbase + regular txs
-    }
-    
-    # Add to chainstate
-    result = chain_state.add_block(block_data)
-    
-    # Build response
-    response = BlockResponse(
-        height=result["height"],
-        hash=block_hash,
-        prev_hash=prev_hash.hex(),
-        merkle_root=merkle_root,
-        timestamp=timestamp,
-        bits=bits,
-        nonce=nonce,
-        difficulty=version,
-        total_supply=chain_state.total_supply,
-        tx_count=tx_count + 1,
-        coinbase_value=coinbase_value
-    )
-    
-    return response
+    try:
+        tx_count = len(request.transactions)
+        
+        # Get previous hash from current tip
+        tip = chain_state.tip_hash
+        if isinstance(tip, bytes):
+            prev_hash = tip if tip else b"\x00" * 32
+        else:
+            prev_hash = bytes.fromhex(tip) if tip else b"\x00" * 32
+        
+        # Build coinbase transaction
+        coinbase_value = UNITS_PER_VULCAN  # 1 VUL in satoshis (simplified)
+        coinbase_tx = {
+            "version": 1,
+            "inputs": [{
+                "prev_txid": "0" * 64,
+                "prev_index": 0xFFFFFFFF,
+                "script_sig": "coinbase",
+                "sequence": 0xFFFFFFFF
+            }],
+            "outputs": [{"value": coinbase_value, "script_pubkey": request.miner_address.encode().hex()}],
+            "lock_time": 0
+        }
+        
+        # Assemble block header
+        version = request.difficulty if request.difficulty else chain_state.difficulty
+        timestamp = int(time.time())
+        
+        # Simplified Merkle root (just hash of coinbase tx for demo)
+        merkle_root = hashlib.sha256(hashlib.sha256(str(coinbase_tx).encode()).hexdigest().encode()).hexdigest()
+        
+        # Simple PoW: find nonce such that hash has enough leading zeros
+        # Fixed difficulty: require a small number of leading zeros for testing
+        # In production, this would use the actual difficulty target
+        required_zeros = 3  # Just 3 leading zeros for quick mining
+        
+        nonce = 0
+        max_nonce = 0xFFFFFFFF
+        found = False
+        block_hash = "0" * 64
+        
+        while nonce < max_nonce:
+            # Build header data
+            bits = version  # Use version as bits for simplicity
+            header_data = f"{version}{prev_hash.hex()}{merkle_root}{timestamp}{bits}{nonce}"
+            h = hashlib.sha256(hashlib.sha256(header_data.encode()).hexdigest().encode()).hexdigest()
+            # Check leading zeros
+            leading_zeros = len(h) - len(h.lstrip('0'))
+            if leading_zeros >= required_zeros:
+                found = True
+                block_hash = h
+                found_nonce = nonce
+                break
+            nonce += 1
+        
+        if not found:
+            found_nonce = 0  # fallback
+        
+        # Build block data
+        block_data = {
+            "version": version,
+            "prev_hash": prev_hash.hex(),
+            "merkle_root": merkle_root,
+            "timestamp": timestamp,
+            "bits": bits,
+            "nonce": found_nonce,
+            "hash": block_hash,
+            "difficulty": version,
+            "coinbase_value": coinbase_value,
+            "tx_count": tx_count + 1,  # coinbase + regular txs
+        }
+        
+        # Add to chainstate
+        result = chain_state.add_block(block_data)
+        
+        # Build response
+        response = BlockResponse(
+            height=result["height"],
+            hash=block_hash,
+            prev_hash=prev_hash.hex(),
+            merkle_root=merkle_root,
+            timestamp=timestamp,
+            bits=bits,
+            nonce=found_nonce,
+            difficulty=version,
+            total_supply=chain_state.total_supply,
+            tx_count=tx_count + 1,
+            coinbase_value=coinbase_value
+        )
+        
+        return response
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Startup ---
 

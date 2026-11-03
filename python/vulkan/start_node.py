@@ -7,7 +7,13 @@ and starts the FastAPI RPC server.
 
 import sys
 import os
-import uvicorn
+
+# Add the venv site-packages path so vulkan_core can be found
+# __file__ is at python/vulkan/start_node.py, so going up twice gives project root
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+venv_sp = os.path.join(project_root, ".venv", "Lib", "site-packages")
+if os.path.isdir(venv_sp):
+    sys.path.insert(0, venv_sp)
 
 # Add the python directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
