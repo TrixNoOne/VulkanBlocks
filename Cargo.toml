@@ -1,0 +1,7 @@
+[package]
+name = "vulkan_wallet"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vulkan_core = { path = "C:/Users/Trix/Desktop/VulkanBlocks/.venv/Lib/site-packages" }
