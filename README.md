@@ -1,75 +1,29 @@
-# Vulkan
+# Vulkan v5.0 Magma Core Ecosystem
 
-Minimal Python blockchain core: UTXO model, P2PKH/HTLC scripts, ASERT
-difficulty, SQLite storage, fork choice and atomic reorg.
+## Overview
+Vulkan (VUL) is a privacy-focused, ASERT-difficulty blockchain with a triple-layer architecture:
+- **L1 Magma Core**: Settlement layer with UTXO model, Double SHA-512 PoW, ASERT difficulty adjustment
+- **L2 Earth Layer**: Instant Zero-Conf relay for P2P transactions
+- **L2 Magma Layer**: High-TPS payment channels with HTLC state channels
 
-## Repo layout
+### Tokenomics
+- **Initial Subsidy**: 12.68 VUL per block (1,268,000,000 vulkano)
+- **Emission Era**: 788,400 blocks (~3 years) with 3/4 decay per era
+- **Hard Cap**: 32,000,000,000 VUL (3.2 × 10^18 vulkano)
+- **Final Supply**: ~319.9M VUL (~1% of cap) after era 73
 
-```
-core/           Consensus implementation (params, tx, block, script,
-                difficulty, genesis, address, chain, storage)
-tools/          Standalone scripts (export_vectors)
-vectors/        Golden test vectors generated from the Python code
-tests/          Pytest suite
-docs/           Specifications (e.g. rpc.md)
-```
+### Consensus
+- **PoW**: Double SHA-512 with ASERT v5.0 difficulty adjustment
+- **Target**: 120 second block time
+- **Difficulty**: Radix 65536 exponential interpolation with Euclidean division for anti-fork parity
+- **Fee Burn**: Usage-driven EMA-based burn (K=8192, 5%->25% range, 30%->90% ceiling)
 
-## Requirements
+### Layer 2
+- **L2 Earth**: Zero-Confirmation instant relay with secp256k1 signature validation
+- **L2 Magma**: 2-of-2 HTLC state channels with OP_CHECKLOCKTIMEVERIFY
 
-Python 3.11+. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-`requirements.txt` contains `coincurve==21.0.0`; `pytest` is needed for the
-test suite.
-
-## Running the test suite
-
-```bash
-python -m pytest -q
-```
-
-With coverage (requires `pytest-cov`):
-
-```bash
-pip install pytest-cov
-python -m pytest --cov=core --cov=tests --cov=tools -q
-```
-
-## Generating golden vectors
-
-The vectors under `vectors/*.json` are produced directly from the Python
-implementation. Regenerate them from the repo root:
-
-```bash
-python -m tools.export_vectors
-```
-
-This overwrites `vectors/*.json`. The test
-`tests/test_vectors.py` regenerates in-memory and compares byte for byte
-against the committed files, and also executes the vectors through the real
-consensus code (P2PKH signature verification, HTLC claim/refund, ASERT
-recomputation, header hashes, `Chain.accept_block` for the regtest block).
-
-**Do not edit `vectors/*.json` by hand.** Always regenerate with
-`python -m tools.export_vectors` and commit the resulting files.
-
-## JSON-RPC contract
-
-See `docs/rpc.md` for the stable JSON-RPC over HTTP contract
-(`getblocktemplate`, `submitblock`, `sendtx`, `getbalance`, `getutxos`,
-`getblock`, `gettx`, `gettip`, `getpeers`, `getmempool`).
-
-## Consensus rules (summary)
-
-- No floats anywhere; all amounts are integers in units of 10^-8 VUL.
-- No `time.time()` in consensus; `now` is always an explicit parameter.
-- No admin keys, no premine.
-- `MAX_MONEY = 32_000_000_000 * 10^8` (fits in int64).
-- `BLOCK_SUBSIDY = 314_520_000`, halved every `HALVING_INTERVAL = 1_051_200`
-  blocks; zero after 64 halvings.
-- `COINBASE_MATURITY = 100` (2 in regtest).
-- Fork choice by cumulative work, not chain length; reorgs are atomic via
-  SQLite transactions with undo data.
+### Technical Details
+- **Block Header**: 184 bytes (version, height, prev_hash, merkle_root, timestamp, target, nonce)
+- **Address**: Base58Check with version byte 0x56 (mainnet), 0x74 (testnet)
+- **Maturity**: 100 blocks for coinbase
+- **Max Money**: 32,000,000,000 VUL = 3.2 × 10^18 vulkano
