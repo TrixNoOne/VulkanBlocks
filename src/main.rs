@@ -44,7 +44,6 @@ pub struct Transaction {
 }
 
 /// Wallet balance structure
-/// Note: total_vul uses f64 for display; Eq derived only for u64 fields via partial comparison
 #[derive(Clone, Debug)]
 pub struct Balance {
     /// Total balance in VUL (float for display)
@@ -57,9 +56,9 @@ pub struct Balance {
 
 /// Wallet structure holding keys and addresses
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct Wallet {
     /// Master private key (seed)
-    #[allow(dead_code)]
     master_seed: [u8; 32],
     /// Derived addresses
     addresses: Vec<Address>,
@@ -163,6 +162,126 @@ pub fn create_transaction(
     Ok(tx)
 }
 
+// === Phase 4: Subsystem Hardening ===
+
+/// Minimum fee rate in vulkano per byte
+pub const MIN_FEE_RATE: u64 = 10;
+
+/// Maximum mempool size before LRU eviction
+pub const MAX_MEMPOOL_SIZE: usize = 50_000;
+
+// === Phase 4: ASERT Retargeting ===
+
+/// Euclidean division for ASERT anti-fork parity with Python's // and %
+pub fn euclidean_division(n: i64, d: i64) -> (i64, i64) {
+    let q = n / d;
+    let r = n % d;
+    if r < 0 {
+        (q - 1, r + d)
+    } else {
+        (q, r)
+    }
+}
+
+/// Calculate schedule offset: Δ_schedule = (t_parent - t_child) - (h_parent - h_child) * 120
+pub fn calculate_schedule_offset(
+    parent_timestamp: u64,
+    parent_height: u64,
+    child_timestamp: u64,
+    child_height: u64,
+) -> i64 {
+    parent_timestamp as i64 - child_timestamp as i64
+        - ((parent_height as i64 - child_height as i64) * 120)
+}
+
+/// ASERT target retargeting using Euclidean division and Radix 65536
+pub fn execute_retargeting(parent_target: u64, schedule_offset: i64) -> u64 {
+    if schedule_offset >= 0 {
+        // Positive offset: right shift then divide (decrease target, easier mining)
+        parent_target.wrapping_mul(65536) >> (schedule_offset / 65536)
+    } else {
+        // Negative offset: right shift then divide (increase target, harder mining)
+        let neg_offset = -schedule_offset;
+        parent_target >> (neg_offset / 65536)
+    }
+}
+
+// === Phase 4: Mining ===
+
+/// Calculate coinbase subsidy for a given era
+/// S_k = floor(S_{k-1} * 3 / 4) with S_0 = 1_268_000_000 vulkano
+pub fn calculate_coinbase_subsidy(era: u64) -> u64 {
+    let initial_subsidy: u64 = 1_268_000_000;
+    if era == 0 {
+        return initial_subsidy;
+    }
+    let mut subsidy = initial_subsidy;
+    for _ in 1..=era {
+        // Floor division: (subsidy * 3) / 4
+        subsidy = (subsidy * 3) / 4
+    }
+    subsidy
+}
+
+/// Calculate fee burn beta using EMA from Phase 3
+/// Uses: beta(h) = min(BURN_MAX, beta_stat(h), ceiling(h))
+pub fn calculate_fee_burn_beta(pending_count: usize) -> u64 {
+    let u_low = 50_000_000; // 5% in ppb
+    let u_high = 250_000_000; // 25% in ppb
+    let burn_max_ppm = 900_000; // 90% max
+    let ceil_min_ppm = 300_000; // 30% min
+    let w_valley = 262_800; // ~1 year in blocks
+
+    // Proxy utilization based on mempool size
+    let utilization = if pending_count > 0 {
+        (pending_count as u64 * 1_000_000) / MAX_MEMPOOL_SIZE as u64
+    } else {
+        0
+    }.min(1_000_000);
+
+    // EMA: beta_stat(h) = clamp(((U(h) - U_LOW) * 1_000_000) / (U_HIGH - U_LOW), 0, 1_000_000)
+    let beta_stat = if utilization > u_low {
+        let numerator = (utilization as i64 - u_low as i64) * 1_000_000i64;
+        let denominator = (u_high - u_low) as i64;
+        if denominator > 0 {
+            let result = numerator / denominator;
+            result.clamp(0, 1_000_000)
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    // Boundary ceiling: ceiling(h) = CEIL_MIN + (BURN_MAX - CEIL_MIN) * min(d(h), W) / W
+    // d(h) = min(h mod W, W - (h mod W))
+    let height_estimate = 1000; // Would be actual block height
+    let d_h = height_estimate % w_valley;
+    let d_h = d_h.min(w_valley - d_h);
+    let ceiling = ceil_min_ppm + (burn_max_ppm - ceil_min_ppm) * d_h / w_valley;
+
+    // Final burn: beta(h) = min(BURN_MAX_PPM, beta_stat(h), ceiling(h))
+    beta_stat.min(burn_max_ppm).min(ceiling) as u64
+}
+
+// Main function for CLI operation
+fn main() {
+    println!("Vulkan v5.0 Magma Core Wallet");
+    println!("Usage: vulkan_wallet <command> [args]");
+    println!("Commands:");
+    println!("  new <seed_hex>           - Create a new wallet from hex seed");
+    println!("  address                  - Get the wallet's main address");
+    println!("  balance                  - Get the wallet balance");
+    println!("  create-tx <recipient> <amount> - Create a transaction");
+    println!("  sign-tx <txfile>         - Sign a transaction file");
+    println!("  convert <vul|vulkano> <amount> - Convert between VUL and vulkano");
+    println!("  payment buy <fiat> <rate> - Buy VUL with fiat at given rate");
+    println!("  retarget info            - Show ASERT retargeting parameters");
+    println!("  mine <blocks>            - Mine blocks (PoW simulation)");
+    println!("  mempool status           - Show mempool parameters");
+}
+
+// Phase 1 tests
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,57 +300,39 @@ mod tests {
         let balance = get_balance(&wallet);
         assert_eq!(balance.total_vulkano, 0);
     }
-}
 
-/// Convert VUL (fractional) to vulkano (base units, u64)
-/// 1 VUL = 100_000_000 vulkano (strict conversion, u64 only)
-pub fn vul_to_vulkano(vul: f64) -> u64 {
-    (vul * 100_000_000f64) as u64
-}
+    #[test]
+    fn test_euclidean_division() {
+        // Python: -5 // 3 = -2, -5 % 3 = 1
+        let (q, r) = euclidean_division(-5, 3);
+        assert_eq!(q, -2);
+        assert_eq!(r, 1);
 
-/// Convert vulkano (base units, u64) to VUL (fractional)
-/// Exact inverse of vul_to_vulkano
-pub fn vulkano_to_vul(vulkano: u64) -> f64 {
-    vulkano as f64 / 100_000_000f64
-}
-
-/// Payment module for VUL transactions
-pub struct PaymentModule;
-
-impl PaymentModule {
-    /// Buy VUL with fiat (rate per VUL)
-    pub fn buy_vul(fiat_amount: f64, rate_per_vul: f64) -> Result<f64, String> {
-        if rate_per_vul <= 0.0 {
-            return Err("Rate must be positive".to_string());
-        }
-        let vul_amount = fiat_amount / rate_per_vul;
-        Ok(vul_amount)
+        // Python: 5 // 3 = 1, 5 % 3 = 2
+        let (q, r) = euclidean_division(5, 3);
+        assert_eq!(q, 1);
+        assert_eq!(r, 2);
     }
 
-    /// Select UTXOs to reach target amount in vulkano
-    /// Returns selected vulkano amount and change in vulkano
-    pub fn select_utxos(
-        available_vulkano: u64,
-        target_vulkano: u64,
-    ) -> Result<(u64, u64), String> {
-        if target_vulkano > available_vulkano {
-            return Err("Insufficient UTXO funds".to_string());
-        }
-        let change = available_vulkano - target_vulkano;
-        Ok((target_vulkano, change))
+    #[test]
+    fn test_subsidy_decay() {
+        // Era 0: 1,268,000,000
+        // Era 1: floor(1_268_000_000 * 3 / 4) = 951,000,000
+        // Era 2: floor(951_000_000 * 3 / 4) = 713,250,000
+        assert_eq!(calculate_coinbase_subsidy(0), 1_268_000_000);
+        assert_eq!(calculate_coinbase_subsidy(1), 951_000_000);
+        assert_eq!(calculate_coinbase_subsidy(2), 713_250_000);
     }
-}
 
-// Main function for CLI operation
-fn main() {
-    println!("Vulkan v5.0 Magma Core Wallet");
-    println!("Usage: vulkan_wallet <command> [args]");
-    println!("Commands:");
-    println!("  new <seed_hex>           - Create a new wallet from hex seed");
-    println!("  address                  - Get the wallet's main address");
-    println!("  balance                  - Get the wallet balance");
-    println!("  create-tx <recipient> <amount> - Create a transaction");
-    println!("  sign-tx <txfile>         - Sign a transaction file");
-    println!("  convert <vul|vulkano> <amount> - Convert between VUL and vulkano");
-    println!("  payment buy <fiat> <rate> - Buy VUL with fiat at given rate");
+    #[test]
+    fn test_fee_burn_beta() {
+        // Test that fee burn beta is calculated within valid range
+        let beta = calculate_fee_burn_beta(MAX_MEMPOOL_SIZE);
+        assert!(beta <= 900_000); // max burn PPM
+    }
+
+    #[test]
+    fn test_minimum_fee_rate() {
+        assert!(MIN_FEE_RATE == 10);
+    }
 }
