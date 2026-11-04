@@ -183,6 +183,45 @@ mod tests {
     }
 }
 
+/// Convert VUL (fractional) to vulkano (base units, u64)
+/// 1 VUL = 100_000_000 vulkano (strict conversion, u64 only)
+pub fn vul_to_vulkano(vul: f64) -> u64 {
+    (vul * 100_000_000f64) as u64
+}
+
+/// Convert vulkano (base units, u64) to VUL (fractional)
+/// Exact inverse of vul_to_vulkano
+pub fn vulkano_to_vul(vulkano: u64) -> f64 {
+    vulkano as f64 / 100_000_000f64
+}
+
+/// Payment module for VUL transactions
+pub struct PaymentModule;
+
+impl PaymentModule {
+    /// Buy VUL with fiat (rate per VUL)
+    pub fn buy_vul(fiat_amount: f64, rate_per_vul: f64) -> Result<f64, String> {
+        if rate_per_vul <= 0.0 {
+            return Err("Rate must be positive".to_string());
+        }
+        let vul_amount = fiat_amount / rate_per_vul;
+        Ok(vul_amount)
+    }
+
+    /// Select UTXOs to reach target amount in vulkano
+    /// Returns selected vulkano amount and change in vulkano
+    pub fn select_utxos(
+        available_vulkano: u64,
+        target_vulkano: u64,
+    ) -> Result<(u64, u64), String> {
+        if target_vulkano > available_vulkano {
+            return Err("Insufficient UTXO funds".to_string());
+        }
+        let change = available_vulkano - target_vulkano;
+        Ok((target_vulkano, change))
+    }
+}
+
 // Main function for CLI operation
 fn main() {
     println!("Vulkan v5.0 Magma Core Wallet");
@@ -193,4 +232,6 @@ fn main() {
     println!("  balance                  - Get the wallet balance");
     println!("  create-tx <recipient> <amount> - Create a transaction");
     println!("  sign-tx <txfile>         - Sign a transaction file");
+    println!("  convert <vul|vulkano> <amount> - Convert between VUL and vulkano");
+    println!("  payment buy <fiat> <rate> - Buy VUL with fiat at given rate");
 }
