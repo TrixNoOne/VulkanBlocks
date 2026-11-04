@@ -1,0 +1,20 @@
+#!/usr/bin/env bats
+# Compile the Vulkan Wallet
+
+set -e
+
+echo "🔨 Compiling Vulkan Wallet v5.0 Magma Core..."
+
+# Change to wallet directory
+cd wallet
+
+# Build in release mode for production
+cargo build --release --bin vulkan_wallet
+
+if [ $? -eq 0 ]; then
+    echo "✅ Build successful!"
+    echo "Binary location: wallet/target/release/vulkan_wallet"
+else
+    echo "❌ Build failed!"
+    exit 1
+fi

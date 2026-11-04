@@ -1,0 +1,18 @@
+#!/usr/bin/env bats
+# Run the Vulkan Wallet
+
+set -e
+
+echo "▶️ Running Vulkan Wallet v5.0 Magma Core..."
+
+# Change to wallet directory
+cd wallet
+
+# Run the wallet binary in release mode if built, otherwise build and run
+if [ -f "target/release/vulkan_wallet" ]; then
+    echo "Using existing release binary..."
+    ./target/release/vulkan_wallet
+else
+    echo "Release binary not found, building..."
+    cargo run --bin vulkan_wallet
+fi
