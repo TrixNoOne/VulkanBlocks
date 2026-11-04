@@ -9,7 +9,7 @@
 pub type Address = [u8; 20];
 
 /// Transaction input structure
-#[derive(Clone, Debug, PartialEq, Eq, SerdeDeserialize, SerdeSerialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TxInput {
     /// Previous transaction output being spent
     pub prev_tx_hash: [u8; 32],
@@ -22,7 +22,7 @@ pub struct TxInput {
 }
 
 /// Transaction output structure
-#[derive(Clone, Debug, PartialEq, Eq, SerdeDeserialize, SerdeSerialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TxOutput {
     /// Value in vulkano (1 VUL = 100_000_000 vulkano)
     pub value: u64,
@@ -31,7 +31,7 @@ pub struct TxOutput {
 }
 
 /// Transaction structure
-#[derive(Clone, Debug, SerdeDeserialize, SerdeSerialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Transaction {
     /// Version of the transaction format
     pub version: u32,
@@ -44,7 +44,8 @@ pub struct Transaction {
 }
 
 /// Wallet balance structure
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// Note: total_vul uses f64 for display; Eq derived only for u64 fields via partial comparison
+#[derive(Clone, Debug)]
 pub struct Balance {
     /// Total balance in VUL (float for display)
     pub total_vul: f64,
@@ -71,12 +72,12 @@ pub fn FromSeed(seed: [u8; 32]) -> Result<Wallet, String> {
     // This is a simplified implementation
     let mut addresses = Vec::new();
     let mut tx_history = Vec::new();
-    
+
     // Derive first address from seed
     let mut address = [0u8; 20];
     address.copy_from_slice(&seed[0..20]);
     addresses.push(address);
-    
+
     Ok(Wallet {
         master_seed: seed,
         addresses,
@@ -93,14 +94,10 @@ pub fn get_address(wallet: &Wallet) -> Address {
 pub fn get_balance(wallet: &Wallet) -> Balance {
     let total_vulkano: u64 = wallet.transaction_history
         .iter()
-        .map(|tx| {
-            tx.outputs
-                .iter()
-                .map(|out| out.value)
-                .sum::<u64>()
-        }
+        .flat_map(|tx| tx.outputs.iter())
+        .map(|out| out.value)
         .sum();
-    
+
     Balance {
         total_vul: total_vulkano as f64 / 100_000_000f64,
         total_vulkano,
@@ -114,7 +111,7 @@ pub fn sign_transaction(tx: &mut Transaction, wallet: &Wallet) -> Result<(), Str
     // the transaction inputs using the wallet's private key
     let address = get_address(wallet);
     // Verify the address matches
-    let addr_hash = address.iter().fold(0u32, |acc, &b| acc.wrapping_mul(31) + (b as u32));
+    let addr_hash: u32 = address.iter().fold(0, |acc, &b| acc.wrapping_mul(31) + (b as u32));
     if addr_hash % 100 != 0 {
         return Err("Address mismatch".to_string());
     }
@@ -128,59 +125,71 @@ pub fn create_transaction(
     amount_vul: f64,
 ) -> Result<Transaction, String> {
     let balance = get_balance(wallet);
-    
+
     if amount_vul > balance.total_vul {
         return Err("Insufficient funds".to_string());
     }
-    
+
     let amount_vulkano = (amount_vul * 100_000_000f64) as u64;
-    
+
     // Create output to recipient
-    let recipient_script = vec![recipient.as_slice().to_vec().concat()];
-    
+    let recipient_script = recipient.to_vec();
+
     let mut outputs = Vec::new();
     outputs.push(TxOutput {
         value: amount_vulkano,
         script_pubkey: recipient_script,
     });
-    
+
     // Create a input (using a dummy previous output)
     let prev_hash = [0u8; 32];
     let prev_index = u32::MAX;
-    
+
     let inputs = vec![TxInput {
-        prev_tx_hash,
+        prev_tx_hash: prev_hash,
         prev_index,
         script_sig: wallet.addresses.first().unwrap_or(&[0u8; 20]).to_vec(),
         sequence: u32::MAX,
     }];
-    
+
     let tx = Transaction {
         version: 1,
         inputs,
         outputs,
         lock_time: 0,
     };
-    
+
     Ok(tx)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_wallet_creation() {
         let seed: [u8; 32] = [42u8; 32];
-        let wallet = Wallet::FromSeed(seed).unwrap();
+        let wallet = FromSeed(seed).unwrap();
         assert_eq!(wallet.addresses.len(), 1);
     }
-    
+
     #[test]
     fn test_balance_calculation() {
         let seed: [u8; 32] = [1u8; 32];
-        let wallet = Wallet::FromSeed(seed).unwrap();
+        let wallet = FromSeed(seed).unwrap();
         let balance = get_balance(&wallet);
         assert_eq!(balance.total_vulkano, 0);
     }
+}
+
+// Main function for CLI operation
+fn main() {
+    println!("Vulkan v5.0 Magma Core Wallet");
+    println!("Usage: vulkan_wallet <command> [args]");
+    println!("Commands:");
+    println!("  new <seed_hex>           - Create a new wallet from hex seed");
+    println!("  address                  - Get the wallet's main address");
+    println!("  balance                  - Get the wallet balance");
+    println!("  create-tx <recipient> <amount> - Create a transaction");
+    println!("  sign-tx <txfile>         - Sign a transaction file");
 }
