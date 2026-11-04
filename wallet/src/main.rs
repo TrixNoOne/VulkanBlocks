@@ -59,6 +59,7 @@ pub struct Balance {
 #[derive(Clone, Debug)]
 pub struct Wallet {
     /// Master private key (seed)
+    #[allow(dead_code)]
     master_seed: [u8; 32],
     /// Derived addresses
     addresses: Vec<Address>,
@@ -67,11 +68,12 @@ pub struct Wallet {
 }
 
 /// Create a new wallet from a seed
+#[allow(non_snake_case)]
 pub fn FromSeed(seed: [u8; 32]) -> Result<Wallet, String> {
     // Derive addresses from seed using secp256k1
     // This is a simplified implementation
     let mut addresses = Vec::new();
-    let mut tx_history = Vec::new();
+    let tx_history = Vec::new();
 
     // Derive first address from seed
     let mut address = [0u8; 20];
@@ -106,13 +108,13 @@ pub fn get_balance(wallet: &Wallet) -> Balance {
 }
 
 /// Sign a transaction with the wallet's private key
-pub fn sign_transaction(tx: &mut Transaction, wallet: &Wallet) -> Result<(), String> {
+pub fn sign_transaction(_tx: &mut Transaction, wallet: &Wallet) -> Result<(), String> {
     // In a real implementation, this would use secp256k1 to sign
     // the transaction inputs using the wallet's private key
     let address = get_address(wallet);
     // Verify the address matches
     let addr_hash: u32 = address.iter().fold(0, |acc, &b| acc.wrapping_mul(31) + (b as u32));
-    if addr_hash % 100 != 0 {
+    if !addr_hash.is_multiple_of(100) {
         return Err("Address mismatch".to_string());
     }
     Ok(())
@@ -135,11 +137,10 @@ pub fn create_transaction(
     // Create output to recipient
     let recipient_script = recipient.to_vec();
 
-    let mut outputs = Vec::new();
-    outputs.push(TxOutput {
+    let outputs = vec![TxOutput {
         value: amount_vulkano,
         script_pubkey: recipient_script,
-    });
+    }];
 
     // Create a input (using a dummy previous output)
     let prev_hash = [0u8; 32];
